@@ -25,7 +25,13 @@ onMounted(() => {
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
 
+  const message = `${userName}さん: ${chatContent.value}`
+  socket.emit("publishEvent", message)
+
+
   // 入力欄を初期化
+  chatContent.value = ""
+
 
 }
 
@@ -36,9 +42,11 @@ const onExit = () => {
 
 // メモを画面上に表示する
 const onMemo = () => {
-  // メモの内容を表示
+  const message = `${userName}さんのメモ: ${chatContent.value}`
+  chatList.unshift(message)
 
   // 入力欄を初期化
+  chatContent.value = ""
 
 }
 // #endregion
@@ -56,7 +64,7 @@ const onReceiveExit = (data) => {
 
 // サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
-  chatList.push()
+  chatList.unshift(data)
 }
 // #endregion
 
@@ -75,25 +83,34 @@ const registerSocketEvent = () => {
 
   // 投稿イベントを受け取ったら実行
   socket.on("publishEvent", (data) => {
-
+    onReceivePublish(data)
   })
 }
+
+// メッセージがメモかどうかを判定する
+const isMemo = (chat) => {
+  return chat.isMemo
+}
+
 // #endregion
 </script>
+
 
 <template>
   <div class="mx-auto my-5 px-4">
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
-      <textarea variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
+      <textarea v-model="chatContent" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
       <div class="mt-5">
-        <button class="button-normal">投稿</button>
-        <button class="button-normal util-ml-8px">メモ</button>
+        <button class="button-normal" @click="onPublish">投稿</button>
+        <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i">{{ chat }}</li>
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith({userName} + 'さん:'), memo: chat.startsWith({userName} + 'さんのメモ:') }">
+            {{ chat }}
+          </li>
         </ul>
       </div>
     </div>
@@ -104,6 +121,20 @@ const registerSocketEvent = () => {
 </template>
 
 <style scoped>
+.publish {
+  color: red !important;
+  font-style: italic !important;
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+  border-left: 4px solid #ced4da !important;
+  margin-top: 10px !important;
+  
+}
+
+.memo {
+  color: blue; /* 青色のテキスト */
+}
+
 .link {
   text-decoration: none;
 }
