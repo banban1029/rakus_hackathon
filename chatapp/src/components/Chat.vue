@@ -107,7 +107,7 @@ const isMemo = (chat) => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith(userName.value + 'さん:'), memo: chat.startsWith(userName.value + 'さんのメモ:') }">
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith(userName + 'さん:'), memo: chat.startsWith(userName + 'さんのメモ:') }">
             {{ chat }}
           </li>
         </ul>
