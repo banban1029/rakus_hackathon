@@ -25,11 +25,8 @@ onMounted(() => {
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
   // 投稿メッセージをサーバに送信
-  socket.emit('publishEvent', chatContent.value)
-
   const message = `${userName}さん: ${chatContent.value}`
   socket.emit("publishEvent", message)
-
 
   // 入力欄を初期化
   chatContent.value = ""
