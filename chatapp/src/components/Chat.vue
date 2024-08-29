@@ -25,7 +25,7 @@ onMounted(() => {
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
   // 投稿メッセージをサーバに送信
-  const message = `${userName}さん: ${chatContent.value}`
+  const message = `${userName.value}さん: ${chatContent.value}`
   socket.emit("publishEvent", message)
 
   // 入力欄を初期化
@@ -39,7 +39,7 @@ const onExit = () => {
 
 // メモを画面上に表示する
 const onMemo = () => {
-  const message = `${userName}さんのメモ: ${chatContent.value}`
+  const message = `${userName.value}さんのメモ: ${chatContent.value}`
   chatList.unshift(message)
 
   // 入力欄を初期化
@@ -51,7 +51,8 @@ const onMemo = () => {
 // #region socket event handler
 // サーバから受信した入室メッセージ画面上に表示する
 const onReceiveEnter = (data) => {
-  chatList.push(data)
+  const loginMessage = `${data}さんが入室しました`
+  chatList.push(loginMessage)
 }
 
 // サーバから受信した退室メッセージを受け取り画面上に表示する
@@ -106,7 +107,7 @@ const isMemo = (chat) => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith({userName} + 'さん:'), memo: chat.startsWith({userName} + 'さんのメモ:') }">
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith(userName + 'さん:'), memo: chat.startsWith(userName + 'さんのメモ:') }">
             {{ chat }}
           </li>
         </ul>
