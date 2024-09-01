@@ -1,7 +1,7 @@
 <script setup>
 import { inject, ref, reactive, onMounted } from "vue"
 import socketManager from '../socketManager.js'
-
+import TexRenderer from './TexRenderer.vue'  
 
 // #region global state
 const userName = inject("userName")
@@ -63,7 +63,19 @@ const onReceiveExit = (data) => {
 // サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
 
-  chatList.push(data)
+  // chatList.push(data)
+  if (isTex(data)) {
+    chatList.push({
+      text: data,
+      isTex: true
+    });
+  } else {
+    chatList.push({
+      text: data,
+      isTex: false
+    });
+  }
+
 }
 // #endregion
 
@@ -91,6 +103,23 @@ const isMemo = (chat) => {
   return chat.isMemo
 }
 
+// Tex形式のメッセージかどうかを判定する
+const isTex = (chat) => {
+  console.log('Chat value:', chat);
+  console.log('Contains "tex:":', chat.includes('tex:'));
+  return chat.includes('tex:');
+}
+
+
+// Tex形式のメッセージを抽出する
+const extractTex = (chat) => {
+  const extracted = chat.replace('tex:', '').trim();
+  console.log("Extracted Tex:", extracted)
+  return extracted
+}
+
+
+
 // #endregion
 </script>
 
@@ -107,8 +136,9 @@ const isMemo = (chat) => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith(userName + 'さん:'), memo: chat.startsWith(userName + 'さんのメモ:') }">
-            {{ chat }}
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.text.startsWith(userName + 'さん:'), memo: chat.text.startsWith(userName + 'さんのメモ:') }">
+            <TexRenderer v-if="chat.isTex" :formula="extractTex(chat.text)" />
+            <span v-else>{{ chat.text }}</span>
           </li>
         </ul>
       </div>
