@@ -1,33 +1,41 @@
 <template>
-    <span v-html="renderedFormula"></span>
+    <div ref="container" class="math-container"></div>
   </template>
   
   <script setup>
-  import { ref, watch } from 'vue'
-  import katex from 'katex'
-  import 'katex/dist/katex.min.css'
+  import { onMounted, ref, defineProps } from 'vue';
+  import katex from 'katex';
+  import 'katex/dist/katex.min.css'; // KaTeX のスタイルをインポート
   
   const props = defineProps({
-    formula: String,
-  })
-  
-  const renderedFormula = ref('')
-  
-  // LaTeXをレンダリングする関数
-  const renderFormula = (formula) => {
-    try {
-      return katex.renderToString(formula, {
-        throwOnError: false,
-      })
-    } catch (error) {
-      console.error('Error rendering formula:', error)
-      return formula
+    formula: {
+      type: String,
+      required: true
     }
-  }
+  });
   
-  // フォーミュラの変更を監視し、再レンダリングする
-  watch(() => props.formula, (newFormula) => {
-    renderedFormula.value = renderFormula(newFormula)
-  }, { immediate: true })
+  const container = ref(null);
+  
+  onMounted(() => {
+    if (container.value) {
+      try {
+        // KaTeX を使って数式をレンダリング
+        katex.render(props.formula, container.value, {
+          throwOnError: false,
+          // ここでカスタマイズオプションを設定できます
+          displayMode: true, // ブロック数式として表示
+        });
+      } catch (err) {
+        console.error('KaTeX error:', err);
+      }
+    }
+  });
   </script>
+  
+  <style scoped>
+  .math-container {
+    font-size: 16px;
+    margin: 10px 0;
+  }
+  </style>
   

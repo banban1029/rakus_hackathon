@@ -1,7 +1,7 @@
 <script setup>
 import { inject, ref, reactive, onMounted } from "vue"
 import socketManager from '../socketManager.js'
-import TexRenderer from './TexRenderer.vue'  
+import TexRenderer from './TexRenderer.vue'
 
 // #region global state
 const userName = inject("userName")
@@ -23,9 +23,7 @@ onMounted(() => {
 // #endregion
 
 // #region browser event handler
-// 投稿メッセージをサーバに送信する
 const onPublish = () => {
-  // 投稿メッセージをサーバに送信
   const message = `${userName.value}さん: ${chatContent.value}`
   socket.emit("publishEvent", message)
 
@@ -33,96 +31,115 @@ const onPublish = () => {
   chatContent.value = ""
 }
 
-// 退室メッセージをサーバに送信する
-const onExit = () => {
+const onExit = () => {}
 
-}
-
-// メモを画面上に表示する
 const onMemo = () => {
   const message = `${userName.value}さんのメモ: ${chatContent.value}`
-  chatList.unshift(message)
+  
+  // メッセージ内に `tex:` プレフィックスが含まれている場合、その後の部分を LaTeX として処理
+  const parts = message.split('tex:');
+  
+  if (parts.length > 1) {
+    const normalText = parts[0].trim();
+    const texText = parts.slice(1).join('tex:').trim();
+    
+    // LaTeX 部分を追加
+    if (texText) {
+      chatList.unshift({
+        text: texText, // LaTeX 部分の前に半角スペースを追加
+        isTex: true
+      });
+    }
 
-  // 入力欄を初期化
-  chatContent.value = ""
+    // メッセージの通常部分を追加
+    if (normalText) {
+      chatList.unshift({
+        text: normalText,
+        isTex: false
+      });
+    }
 
-}
-// #endregion
-
-// #region socket event handler
-// サーバから受信した入室メッセージ画面上に表示する
-const onReceiveEnter = (data) => {
-  chatList.push(data)
-}
-
-// サーバから受信した退室メッセージを受け取り画面上に表示する
-const onReceiveExit = (data) => {
-  chatList.push(data)
-}
-
-// サーバから受信した投稿メッセージを画面上に表示する
-const onReceivePublish = (data) => {
-
-  // chatList.push(data)
-  if (isTex(data)) {
-    chatList.push({
-      text: data,
-      isTex: true
-    });
+    
   } else {
-    chatList.push({
-      text: data,
+    // `tex:` プレフィックスが含まれていない場合、そのまま表示
+    chatList.unshift({
+      text: message,
       isTex: false
     });
   }
 
+  // 入力欄を初期化
+  chatContent.value = ""
+}
+// #endregion
+
+// #region socket event handler
+const onReceiveEnter = (data) => {
+  chatList.unshift({
+    text: data,
+    isTex: false
+  })
+}
+
+const onReceiveExit = (data) => {
+  chatList.unshift({
+    text: data,
+    isTex: false
+  })
+}
+
+const onReceivePublish = (data) => {
+  // メッセージ内に `tex:` プレフィックスが含まれている場合、その後の部分を LaTeX として処理
+  const parts = data.split('tex:');
+  
+  if (parts.length > 1) {
+    const normalText = parts[0].trim();
+    const texText = parts.slice(1).join('tex:').trim();
+    
+    // LaTeX 部分を追加
+    if (texText) {
+      chatList.unshift({
+        // text: `\\text{　Tex: } ${texText}`,
+        text: texText,
+        isTex: true
+      });
+    }
+
+    // メッセージの通常部分を追加
+    if (normalText) {
+      chatList.unshift({
+        text: normalText,
+        isTex: false
+      });
+    }
+
+    
+  } else {
+    // `tex:` プレフィックスが含まれていない場合、そのまま表示
+    chatList.unshift({
+      text: data,
+      isTex: false
+    });
+  }
 }
 // #endregion
 
 // #region local methods
-// イベント登録をまとめる
 const registerSocketEvent = () => {
-  // 入室イベントを受け取ったら実行
   socket.on("enterEvent", (data) => {
     onReceiveEnter(data)
   })
 
-  // 退室イベントを受け取ったら実行
   socket.on("exitEvent", (data) => {
     onReceiveExit(data)
   })
 
-  // 投稿イベントを受け取ったら実行
   socket.on("publishEvent", (data) => {
     onReceivePublish(data)
   })
 }
-
-// メッセージがメモかどうかを判定する
-const isMemo = (chat) => {
-  return chat.isMemo
-}
-
-// Tex形式のメッセージかどうかを判定する
-const isTex = (chat) => {
-  console.log('Chat value:', chat);
-  console.log('Contains "tex:":', chat.includes('tex:'));
-  return chat.includes('tex:');
-}
-
-
-// Tex形式のメッセージを抽出する
-const extractTex = (chat) => {
-  const extracted = chat.replace('tex:', '').trim();
-  console.log("Extracted Tex:", extracted)
-  return extracted
-}
-
-
-
 // #endregion
 </script>
-
 
 <template>
   <div class="mx-auto my-5 px-4">
@@ -136,9 +153,13 @@ const extractTex = (chat) => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.text.startsWith(userName + 'さん:'), memo: chat.text.startsWith(userName + 'さんのメモ:') }">
-            <TexRenderer v-if="chat.isTex" :formula="extractTex(chat.text)" />
-            <span v-else>{{ chat.text }}</span>
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
+            publish: chat.text.startsWith(userName + 'さん:'), 
+            memo: chat.text.startsWith(userName + 'さんのメモ:'), 
+            tex: chat.isTex
+          }">
+            <span v-if="!chat.isTex">{{ chat.text }}</span>
+            <TexRenderer v-if="chat.isTex" :formula="chat.text" />
           </li>
         </ul>
       </div>
@@ -153,15 +174,18 @@ const extractTex = (chat) => {
 .publish {
   color: red !important;
   font-style: italic !important;
-  background-color: #f8f9fa !important;
-  padding: 5px !important;
-  border-left: 4px solid #ced4da !important;
-  margin-top: 10px !important;
-  
 }
 
 .memo {
   color: blue; /* 青色のテキスト */
+}
+
+.tex {
+  color: green; /* 緑色のテキスト */
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+  border-left: 4px solid #ced4da !important;
+  margin-top: 10px !important;
 }
 
 .link {
