@@ -1,5 +1,8 @@
 <script setup>
-import { inject, ref, reactive, onMounted } from "vue"
+import { inject, ref, reactive, onMounted, computed } from "vue"
+import { marked } from 'marked'
+import { debounce } from 'lodash-es'
+
 import socketManager from '../socketManager.js'
 
 // #region global state
@@ -22,6 +25,21 @@ onMounted(() => {
 // #endregion
 
 // #region browser event handler
+
+// markdown機能
+// 入力がどんなものか確認する
+const check = () => {
+  console.log(chatContent.value)
+}
+// markdownに変換
+const output = computed(() => marked(chatContent.value))
+
+// update
+const update = debounce((e) => {
+  chatContent.value = e.target.value
+  console.log(output.value)
+}, 100)
+
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
   // 投稿メッセージをサーバに送信
@@ -37,9 +55,16 @@ const onExit = () => {
 
 }
 
+const withMarkdown = () => {
+  const message = output.value
+  chatList.unshift(message)
+
+  chatContent.value = ""
+}
+
 // メモを画面上に表示する
 const onMemo = () => {
-  const message = `${userName.value}さんのメモ: ${chatContent.value}`
+  const message = `${userName.value}さんのメモ: ${output.value}`
   chatList.unshift(message)
 
   // 入力欄を初期化
@@ -100,10 +125,12 @@ const isMemo = (chat) => {
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
-      <textarea v-model="chatContent" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
+      <textarea v-model="chatContent" @input="update" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
+      <div class="output" v-html="output"></div>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
+        <button class="button-normal util-ml-8px" @click="withMarkdown">メモ</button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
