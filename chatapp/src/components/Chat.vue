@@ -27,23 +27,18 @@ onMounted(() => {
 // #region browser event handler
 
 // markdown機能
-// 入力がどんなものか確認する
-const check = () => {
-  console.log(chatContent.value)
-}
 // markdownに変換
 const output = computed(() => marked(chatContent.value))
 
 // update
 const update = debounce((e) => {
   chatContent.value = e.target.value
-  console.log(output.value)
-}, 100)
+}, 100) // 100msec間隔 より頻繁に実行しない
 
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
   // 投稿メッセージをサーバに送信
-  const message = `${userName.value}さん: ${chatContent.value}`
+  const message = `${userName.value}さん: ${output.value}`
   socket.emit("publishEvent", message)
 
   // 入力欄を初期化
@@ -53,13 +48,6 @@ const onPublish = () => {
 // 退室メッセージをサーバに送信する
 const onExit = () => {
 
-}
-
-const withMarkdown = () => {
-  const message = output.value
-  chatList.unshift(message)
-
-  chatContent.value = ""
 }
 
 // メモを画面上に表示する
@@ -77,18 +65,18 @@ const onMemo = () => {
 // サーバから受信した入室メッセージ画面上に表示する
 const onReceiveEnter = (data) => {
   const loginMessage = `${data}さんが入室しました`
-  chatList.push(loginMessage)
+  chatList.unshift(loginMessage)
 }
 
 // サーバから受信した退室メッセージを受け取り画面上に表示する
 const onReceiveExit = (data) => {
-  chatList.push(data)
+  chatList.unshift(data)
 }
 
 // サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
 
-  chatList.push(data)
+  chatList.unshift(data)
 }
 // #endregion
 
@@ -130,12 +118,11 @@ const isMemo = (chat) => {
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
-        <button class="button-normal util-ml-8px" @click="withMarkdown">メモ</button>
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
           <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{publish: chat.startsWith(userName + 'さん:'), memo: chat.startsWith(userName + 'さんのメモ:') }">
-            {{ chat }}
+            <div v-html="chat" class="content"></div>
           </li>
         </ul>
       </div>
@@ -161,6 +148,9 @@ const isMemo = (chat) => {
   color: blue; /* 青色のテキスト */
 }
 
+.content {
+  padding-left: 20px !important;
+}
 .link {
   text-decoration: none;
 }
