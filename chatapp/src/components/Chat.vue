@@ -36,38 +36,8 @@ const onExit = () => {}
 const onMemo = () => {
   const message = `${userName.value}さんのメモ: ${chatContent.value}`
   
-  // メッセージ内に `tex:` プレフィックスが含まれている場合、その後の部分を LaTeX として処理
-  const parts = message.split('tex:');
+  processMessage(message)
   
-  if (parts.length > 1) {
-    const normalText = parts[0].trim();
-    const texText = parts.slice(1).join('tex:').trim();
-    
-    // LaTeX 部分を追加
-    if (texText) {
-      chatList.unshift({
-        text: texText, // LaTeX 部分の前に半角スペースを追加
-        isTex: true
-      });
-    }
-
-    // メッセージの通常部分を追加
-    if (normalText) {
-      chatList.unshift({
-        text: normalText,
-        isTex: false
-      });
-    }
-
-    
-  } else {
-    // `tex:` プレフィックスが含まれていない場合、そのまま表示
-    chatList.unshift({
-      text: message,
-      isTex: false
-    });
-  }
-
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -89,40 +59,37 @@ const onReceiveExit = (data) => {
 }
 
 const onReceivePublish = (data) => {
-  // メッセージ内に `tex:` プレフィックスが含まれている場合、その後の部分を LaTeX として処理
-  const parts = data.split('tex:');
+  processMessage(data);
   
-  if (parts.length > 1) {
-    const normalText = parts[0].trim();
-    const texText = parts.slice(1).join('tex:').trim();
-    
-    // LaTeX 部分を追加
-    if (texText) {
-      chatList.unshift({
-        // text: `\\text{　Tex: } ${texText}`,
-        text: texText,
-        isTex: true
-      });
-    }
-
-    // メッセージの通常部分を追加
-    if (normalText) {
-      chatList.unshift({
-        text: normalText,
-        isTex: false
-      });
-    }
-
-    
-  } else {
-    // `tex:` プレフィックスが含まれていない場合、そのまま表示
-    chatList.unshift({
-      text: data,
-      isTex: false
-    });
-  }
 }
 // #endregion
+
+// メッセージを処理するヘルパー関数
+const processMessage = (message) => {
+  const parts = message.split('tex:');
+  const normalText = parts[0].trim();
+  const texText = parts.slice(1).join('tex:').trim();
+
+
+  // 分割後の各部分をログに表示
+  console.log("Message parts:", parts);
+  
+  if (texText) {
+    chatList.unshift({
+      text: texText,
+      isTex: true
+    });
+    console.log("Normal text:", normalText);
+  }
+
+  if (normalText) {
+    chatList.unshift({
+      text: normalText,
+      isTex: false
+    });
+    console.log("LaTeX text:", texText);
+  }
+}
 
 // #region local methods
 const registerSocketEvent = () => {
@@ -159,7 +126,7 @@ const registerSocketEvent = () => {
             tex: chat.isTex
           }">
             <span v-if="!chat.isTex">{{ chat.text }}</span>
-            <TexRenderer v-if="chat.isTex" :formula="chat.text" />
+            <TexRenderer v-if="chat.isTex" :formula="chat.text" :key="chat.text" />
           </li>
         </ul>
       </div>
