@@ -31,13 +31,16 @@ const onPublish = () => {
   chatContent.value = ""
 }
 
-const onExit = () => {}
+// 退室メッセージをサーバに送信する
+const onExit = () => {
+  const message = `${userName.value}さんが退室しました。`
+  socket.emit("exitEvent", message)
+}
 
+// メモを取る
 const onMemo = () => {
   const message = `${userName.value}さんのメモ: ${chatContent.value}`
-  
   processMessage(message)
-  
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -45,8 +48,9 @@ const onMemo = () => {
 
 // #region socket event handler
 const onReceiveEnter = (data) => {
+  const loginMessage = `${data}さんが入室しました`
   chatList.unshift({
-    text: data,
+    text: loginMessage,
     isTex: false
   })
 }
