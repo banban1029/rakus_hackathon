@@ -1,5 +1,5 @@
 <script setup>
-import { inject, ref, reactive, onMounted } from "vue"
+import { inject, ref, reactive, onMounted, computed} from "vue"
 import socketManager from '../socketManager.js'
 import TexRenderer from './TexRenderer.vue'
 
@@ -10,6 +10,18 @@ const userName = inject("userName")
 // #region local variable
 const socket = socketManager.getInstance()
 // #endregion
+
+// Preview-Tex
+const previewTex = computed(() => {
+  const parts = chatContent.value.split('tex:');
+  return parts.length > 1 ? parts[1].trim() : null; // LaTeX部分
+})
+
+// Preview-Text
+const previewText = computed(() => {
+  const parts = chatContent.value.split('tex:');
+  return parts[0].trim(); // 通常テキスト部分
+})
 
 // #region reactive variable
 const chatContent = ref("")
@@ -122,6 +134,20 @@ const registerSocketEvent = () => {
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
       </div>
+
+      <!-- Preview Area -->
+      <div class="preview mt-5">
+        <h3>Preview</h3>
+        <!-- Text & Tex -->
+        <span v-if="!previewTex">{{ chatContent }}</span>
+        <span v-else>
+          <!-- texの前のText部分を表示 -->
+          {{ previewText }}
+          <!-- tex部分を表示 -->
+          <TexRenderer v-if="previewTex" :formula="previewTex" />
+        </span>
+      </div>
+
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
           <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
@@ -142,6 +168,14 @@ const registerSocketEvent = () => {
 </template>
 
 <style scoped>
+
+/* Preview-Style */
+.preview {
+  background-color: #f0f0f0;
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
 .publish {
   color: red !important;
   font-style: italic !important;
