@@ -1,6 +1,7 @@
 <script setup>
 import { inject, ref, reactive, onMounted } from "vue"
 import socketManager from '../socketManager.js'
+import TexRenderer from './TexRenderer.vue'
 
 // #region global state
 const userName = inject("userName")
@@ -22,65 +23,89 @@ onMounted(() => {
 // #endregion
 
 // #region browser event handler
-// 投稿メッセージをサーバに送信する
-const onPublish = (e) => {
-  //改行を無効化
-  e.preventDefault() 
 
-  // 投稿メッセージをサーバに送信
+// 投稿メッセージをサーバに送信
+const onPublish = () => {
   const message = `${userName.value}さん: ${chatContent.value}`
   socket.emit("publishEvent", message)
-
   // 入力欄を初期化
   chatContent.value = ""
 }
 
 // 退室メッセージをサーバに送信する
 const onExit = () => {
-
+  const message = `${userName.value}さんが退室しました。`
+  socket.emit("exitEvent", message)
 }
 
-// メモを画面上に表示する
+// メモを取る
 const onMemo = () => {
   const message = `${userName.value}さんのメモ: ${chatContent.value}`
-  chatList.unshift(message)
-
+  processMessage(message)
   // 入力欄を初期化
   chatContent.value = ""
-
 }
 // #endregion
 
 // #region socket event handler
-// サーバから受信した入室メッセージ画面上に表示する
 const onReceiveEnter = (data) => {
-  const loginMessage = `${data.value}さんが入室しました`
-  chatList.push(loginMessage)
+  const loginMessage = `${data}さんが入室しました`
+  chatList.unshift({
+    text: loginMessage,
+    isTex: false
+  })
 }
 
-// サーバから受信した退室メッセージを受け取り画面上に表示する
-const onReceiveExit = (data) => chatList.push(data)
+const onReceiveExit = (data) => {
+  chatList.unshift({
+    text: data,
+    isTex: false
+  })
+}
 
-
-// サーバから受信した投稿メッセージを画面上に表示する
 const onReceivePublish = (data) => {
-
-  chatList.push(data)
+  processMessage(data);
+  
 }
 // #endregion
 
+// メッセージを処理するヘルパー関数
+const processMessage = (message) => {
+  const parts = message.split('tex:');
+  const normalText = parts[0].trim();
+  const texText = parts.slice(1).join('tex:').trim();
+
+
+  // 分割後の各部分をログに表示
+  console.log("Message parts:", parts);
+  
+  if (texText) {
+    chatList.unshift({
+      text: texText,
+      isTex: true
+    });
+    console.log("Normal text:", normalText);
+  }
+
+  if (normalText) {
+    chatList.unshift({
+      text: normalText,
+      isTex: false
+    });
+    console.log("LaTeX text:", texText);
+  }
+}
+
 // #region local methods
-// イベント登録をまとめる
 const registerSocketEvent = () => {
-  // 入室イベントを受け取ったら実行
   socket.on("enterEvent", (data) => {
     onReceiveEnter(data)
   })
 
-  // 退室イベントを受け取ったら実行
-  socket.on("exitEvent", (data) => onReceiveExit(data))
+  socket.on("exitEvent", (data) => {
+    onReceiveExit(data)
+  })
 
-  // 投稿イベントを受け取ったら実行
   socket.on("publishEvent", (data) => {
     onReceivePublish(data)
   })
@@ -99,7 +124,6 @@ const KeyEnterShift = () => {
 // #endregion
 </script>
 
-
 <template>
   <div class="mx-auto my-5 px-4">
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
@@ -112,9 +136,13 @@ const KeyEnterShift = () => {
       </div>
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
-          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i"
-            :class="{ publish: chat.startsWith({ userName } + 'さん:'), memo: chat.startsWith({ userName } + 'さんのメモ:') }">
-            {{ chat }}
+          <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
+            publish: chat.text.startsWith(userName + 'さん:'), 
+            memo: chat.text.startsWith(userName + 'さんのメモ:'), 
+            tex: chat.isTex
+          }">
+            <span v-if="!chat.isTex">{{ chat.text }}</span>
+            <TexRenderer v-if="chat.isTex" :formula="chat.text" :key="chat.text" />
           </li>
         </ul>
       </div>
@@ -129,16 +157,19 @@ const KeyEnterShift = () => {
 .publish {
   color: red !important;
   font-style: italic !important;
-  background-color: #f8f9fa !important;
-  padding: 5px !important;
-  border-left: 4px solid #ced4da !important;
-  margin-top: 10px !important;
-
 }
 
 .memo {
   color: blue;
   /* 青色のテキスト */
+}
+
+.tex {
+  color: green; /* 緑色のテキスト */
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+  border-left: 4px solid #ced4da !important;
+  margin-top: 10px !important;
 }
 
 .link {
