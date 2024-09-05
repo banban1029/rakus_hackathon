@@ -53,7 +53,6 @@ const onPublish = () => {
   // 投稿メッセージをサーバに送信
   const message = `${userName.value}さん: ${output.value}`
   socket.emit("publishEvent", message)
-
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -139,6 +138,17 @@ const registerSocketEvent = () => {
     onReceivePublish(data)
   })
 }
+
+// メッセージがメモかどうかを判定する
+const isMemo = (chat) => {
+  return chat.isMemo
+}
+
+//Shift Enterの改行を実行するメソッド
+const KeyEnterShift = () => {
+  return 
+}
+
 // #endregion
 </script>
 
@@ -147,7 +157,7 @@ const registerSocketEvent = () => {
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
-      <textarea v-model="chatContent" @input="update" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
+      <textarea v-model="chatContent" @input="update" @keydown.enter.exact="onPublish" @keydown.enter.shift.exact="KeyEnterShift" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
       <div class="output" v-html="output"></div>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
@@ -201,7 +211,8 @@ const registerSocketEvent = () => {
 }
 
 .memo {
-  color: blue; /* 青色のテキスト */
+  color: blue;
+  /* 青色のテキスト */
 }
 
 .tex {
