@@ -91,7 +91,7 @@ const onExit = () => {
 
 // メモを取る
 const onMemo = () => {
-  const message = `${userName.value}さんのメモ: ${chatContent.value}`
+  const message = `${userName.value}さんのメモ: ${previewHtml.value}`
   processMessage(message)
   // 入力欄を初期化
   chatContent.value = ""
