@@ -17,17 +17,6 @@ const userName = inject("userName")
 const socket = socketManager.getInstance()
 // #endregion
 
-// Preview-Tex
-const previewTex = computed(() => {
-  const parts = chatContent.value.split('tex:');
-  return parts.length > 1 ? parts[1].trim() : null; // LaTeX部分
-})
-
-// Preview-Text
-const previewText = computed(() => {
-  const parts = chatContent.value.split('tex:');
-  return parts[0].trim(); // 通常テキスト部分
-})
 
 // #region reactive variable
 const chatContent = ref("")
@@ -42,11 +31,8 @@ onMounted(() => {
 
 // #region browser event handler
 
-// markdown機能
-// markdownに変換
-
-// 初期レンダリング
-const renderFormula = (texText) => {
+// texをHtmlに変換する関数
+const texToHtml = (texText) => {
   if (texText) {
     try {
       return katex.renderToString(texText, {
@@ -59,12 +45,22 @@ const renderFormula = (texText) => {
   }
 };
 
-const output = computed(() => {
+// 入力を整形してpreviewに使えるHtmlを生成
+const previewHtml = computed(() => {
+  // chatContet: 入力内容
+
+  // markdownの部分とtexの部分に分割
   const parts = chatContent.value.split('tex:');
+  
+  // markdownをhtmlに変換
   const markdownText = parts[0].trim();
-  const texText = parts.slice(1).join('tex:').trim();
   const htmlText = marked(markdownText);
-  const htmlTex = renderFormula(texText);
+
+  // texをhtmlに変換
+  const texText = parts.slice(1).join('tex:').trim();
+  const htmlTex = texToHtml(texText);
+
+  // texを使っているかで条件分岐
   if (typeof htmlTex === 'undefined') {
     return htmlText
   } else {
@@ -81,7 +77,7 @@ const update = debounce((e) => {
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
   // 投稿メッセージをサーバに送信
-  const message = `${userName.value}さん: ${output.value}`
+  const message = `${userName.value}さん: ${previewHtml.value}`
   socket.emit("publishEvent", message)
   // 入力欄を初期化
   chatContent.value = ""
@@ -95,9 +91,6 @@ const onExit = () => {
 
 // メモを取る
 const onMemo = () => {
-  // const message = `${userName.value}さんのメモ: ${output.value}`
-  // chatList.unshift(message)
-
   const message = `${userName.value}さんのメモ: ${chatContent.value}`
   processMessage(message)
   // 入力欄を初期化
@@ -196,7 +189,7 @@ const KeyEnterShift = () => {
       <!-- Preview Area -->
       <div class="preview mt-5">
         <h3>Preview</h3>
-        <div class="output" v-html="output"></div>
+        <div v-html="previewHtml"></div>
       </div>
 
       <div class="mt-5" v-if="chatList.length !== 0">
