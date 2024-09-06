@@ -7,7 +7,6 @@ import 'katex/dist/katex.min.css'; // KaTeX のスタイルをインポート
 
 
 import socketManager from '../socketManager.js'
-import TexRenderer from './TexRenderer.vue'
 
 // #region global state
 const userName = inject("userName")
@@ -31,19 +30,6 @@ onMounted(() => {
 
 // #region browser event handler
 
-// texをHtmlに変換する関数
-const texToHtml = (texText) => {
-  if (texText) {
-    try {
-      return katex.renderToString(texText, {
-        throwOnError: false,
-        displayMode: true,
-      });
-    } catch (err) {
-      return '<p>数式のレンダリングに失敗しました。</p>';
-    }
-  }
-};
 
 // 入力を整形してpreviewに使えるHtmlを生成
 const previewHtml = computed(() => {
@@ -70,10 +56,30 @@ const previewHtml = computed(() => {
 }
 )
 
-// update
+// texをHtmlに変換する関数
+const texToHtml = (texText) => {
+  if (texText) {
+    try {
+      return katex.renderToString(texText, {
+        throwOnError: false,
+        displayMode: true,
+      });
+    } catch (err) {
+      return '<p>数式のレンダリングに失敗しました。</p>';
+    }
+  }
+};
+
+// chatContentのupdate
 const update = debounce((e) => {
   chatContent.value = e.target.value
 }, 100) // 100msec間隔 より頻繁に実行しない
+
+//Shift Enterの改行を実行するメソッド
+const KeyEnterShift = () => {
+  return 
+}
+
 
 // 投稿メッセージをサーバに送信する
 const onPublish = () => {
@@ -92,11 +98,8 @@ const onExit = () => {
 
 // メモを取る
 const onMemo = () => {
-  const message = `${userName.value}さんのメモ: ${previewHtml.value}`
-  chatList.unshift({
-      text: message,
-      isTex: false
-    });
+  const memoMessage = `${userName.value}さんのメモ: ${previewHtml.value}`
+  chatList.unshift(memoMessage);
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -105,24 +108,15 @@ const onMemo = () => {
 // #region socket event handler
 const onReceiveEnter = (data) => {
   const loginMessage = `${data}さんが入室しました`
-  chatList.unshift({
-    text: loginMessage,
-    isTex: false
-  })
+  chatList.unshift(loginMessage)
 }
 
 const onReceiveExit = (data) => {
-  chatList.unshift({
-    text: data,
-    isTex: false
-  })
+  chatList.unshift(data)
 }
 
 const onReceivePublish = (data) => {
-  chatList.unshift({
-      text: data,
-      isTex: false
-    });
+  chatList.unshift(data);
   
 }
 // #endregion
@@ -142,13 +136,6 @@ const registerSocketEvent = () => {
     onReceivePublish(data)
   })
 }
-
-
-//Shift Enterの改行を実行するメソッド
-const KeyEnterShift = () => {
-  return 
-}
-
 // #endregion
 </script>
 
@@ -168,16 +155,15 @@ const KeyEnterShift = () => {
         <h3>Preview</h3>
         <div v-html="previewHtml"></div>
       </div>
+
       <!-- Chat content Area -->
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
           <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
-            publish: chat.text.startsWith(userName + 'さん:'), 
-            memo: chat.text.startsWith(userName + 'さんのメモ:'), 
-            tex: chat.isTex
+            publish: chat.startsWith(userName + 'さん:'), 
+            memo: chat.startsWith(userName + 'さんのメモ:'), 
           }">
-            <span v-if="!chat.isTex"><div v-html="chat.text" class="content"></div></span>
-            <TexRenderer v-if="chat.isTex" :formula="chat.text" :key="chat.text" />
+            <div v-html="chat" class="content"></div>
           </li>
         </ul>
       </div>
