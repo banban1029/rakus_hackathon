@@ -2,6 +2,9 @@
 import { inject, ref, reactive, onMounted, computed} from "vue"
 import { marked } from 'marked'
 import { debounce } from 'lodash-es'
+import katex from 'katex';
+import 'katex/dist/katex.min.css'; // KaTeX のスタイルをインポート
+
 
 import socketManager from '../socketManager.js'
 import TexRenderer from './TexRenderer.vue'
@@ -41,7 +44,34 @@ onMounted(() => {
 
 // markdown機能
 // markdownに変換
-const output = computed(() => marked(chatContent.value))
+
+// 初期レンダリング
+const renderFormula = (texText) => {
+  if (texText) {
+    try {
+      return katex.renderToString(texText, {
+        throwOnError: false,
+        displayMode: true,
+      });
+    } catch (err) {
+      return '数式のレンダリングに失敗しました。';
+    }
+  }
+};
+
+const output = computed(() => {
+  const parts = chatContent.value.split('tex:');
+  const markdownText = parts[0].trim();
+  const texText = parts.slice(1).join('tex:').trim();
+  const htmlText = marked(markdownText);
+  const htmlTex = renderFormula(texText);
+  if (typeof htmlTex === 'undefined') {
+    return htmlText
+  } else {
+    return htmlText + htmlTex
+  }
+}
+)
 
 // update
 const update = debounce((e) => {
@@ -158,7 +188,6 @@ const KeyEnterShift = () => {
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
       <textarea v-model="chatContent" @input="update" @keydown.enter.exact="onPublish" @keydown.enter.shift.exact="KeyEnterShift" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
-      <div class="output" v-html="output"></div>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
@@ -167,14 +196,7 @@ const KeyEnterShift = () => {
       <!-- Preview Area -->
       <div class="preview mt-5">
         <h3>Preview</h3>
-        <!-- Text & Tex -->
-        <span v-if="!previewTex">{{ chatContent }}</span>
-        <span v-else>
-          <!-- texの前のText部分を表示 -->
-          <span v-html="marked(previewText)"></span>
-          <!-- tex部分を表示 -->
-          <TexRenderer v-if="previewTex" :formula="previewTex" />
-        </span>
+        <div class="output" v-html="output"></div>
       </div>
 
       <div class="mt-5" v-if="chatList.length !== 0">
