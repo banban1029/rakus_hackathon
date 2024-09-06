@@ -40,7 +40,7 @@ const texToHtml = (texText) => {
         displayMode: true,
       });
     } catch (err) {
-      return '数式のレンダリングに失敗しました。';
+      return '<p>数式のレンダリングに失敗しました。</p>';
     }
   }
 };
@@ -57,14 +57,15 @@ const previewHtml = computed(() => {
   const htmlText = marked(markdownText);
 
   // texをhtmlに変換
-  const texText = parts.slice(1).join('tex:').trim();
+  const texText = parts.slice(1).join("").trim();
   const htmlTex = texToHtml(texText);
+  const htmlTexforDesign = `<span class="tex">${htmlTex}</span>` // fix: tex class のデザインをあてたいけどあたらない
 
   // texを使っているかで条件分岐
   if (typeof htmlTex === 'undefined') {
     return htmlText
   } else {
-    return htmlText + htmlTex
+    return htmlText + htmlTexforDesign
   }
 }
 )
@@ -92,7 +93,10 @@ const onExit = () => {
 // メモを取る
 const onMemo = () => {
   const message = `${userName.value}さんのメモ: ${previewHtml.value}`
-  processMessage(message)
+  chatList.unshift({
+      text: message,
+      isTex: false
+    });
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -115,37 +119,14 @@ const onReceiveExit = (data) => {
 }
 
 const onReceivePublish = (data) => {
-  processMessage(data);
+  chatList.unshift({
+      text: data,
+      isTex: false
+    });
   
 }
 // #endregion
 
-// メッセージを処理するヘルパー関数
-const processMessage = (message) => {
-  const parts = message.split('tex:');
-  const normalText = parts[0].trim();
-  const texText = parts.slice(1).join('tex:').trim();
-
-
-  // 分割後の各部分をログに表示
-  console.log("Message parts:", parts);
-  
-  if (texText) {
-    chatList.unshift({
-      text: texText,
-      isTex: true
-    });
-    console.log("Normal text:", normalText);
-  }
-
-  if (normalText) {
-    chatList.unshift({
-      text: normalText,
-      isTex: false
-    });
-    console.log("LaTeX text:", texText);
-  }
-}
 
 // #region local methods
 const registerSocketEvent = () => {
@@ -162,10 +143,6 @@ const registerSocketEvent = () => {
   })
 }
 
-// メッセージがメモかどうかを判定する
-const isMemo = (chat) => {
-  return chat.isMemo
-}
 
 //Shift Enterの改行を実行するメソッド
 const KeyEnterShift = () => {
@@ -191,7 +168,7 @@ const KeyEnterShift = () => {
         <h3>Preview</h3>
         <div v-html="previewHtml"></div>
       </div>
-
+      <!-- Chat content Area -->
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
           <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
@@ -220,22 +197,22 @@ const KeyEnterShift = () => {
   border: 1px solid #ddd;
 }
 
+.tex {
+  color: green !important;
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+  border-left: 4px solid #ced4da !important;
+  margin-top: 10px !important;
+}
+
 .publish {
-  color: red !important;
+  color: red;
   font-style: italic !important;
 }
 
 .memo {
   color: blue;
   /* 青色のテキスト */
-}
-
-.tex {
-  color: green; /* 緑色のテキスト */
-  background-color: #f8f9fa !important;
-  padding: 5px !important;
-  border-left: 4px solid #ced4da !important;
-  margin-top: 10px !important;
 }
 
 .content {
