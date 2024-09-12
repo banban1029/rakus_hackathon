@@ -1,7 +1,12 @@
 <script setup>
-import { inject, ref, reactive, onMounted } from "vue"
+import { inject, ref, reactive, onMounted, computed} from "vue"
+import { marked } from 'marked'
+import { debounce } from 'lodash-es'
+import katex from 'katex';
+import 'katex/dist/katex.min.css'; // KaTeX のスタイルをインポート
+
+
 import socketManager from '../socketManager.js'
-import TexRenderer from './TexRenderer.vue'
 
 // #region global state
 const userName = inject("userName")
@@ -10,6 +15,7 @@ const userName = inject("userName")
 // #region local variable
 const socket = socketManager.getInstance()
 // #endregion
+
 
 // #region reactive variable
 const chatContent = ref("")
@@ -24,9 +30,61 @@ onMounted(() => {
 
 // #region browser event handler
 
-// 投稿メッセージをサーバに送信
+
+// 入力を整形してpreviewに使えるHtmlを生成
+const previewHtml = computed(() => {
+  // chatContet: 入力内容
+
+  // markdownの部分とtexの部分に分割
+  const parts = chatContent.value.split('tex:');
+  
+  // markdownをhtmlに変換
+  const markdownText = parts[0].trim();
+  const htmlText = marked(markdownText);
+
+  // texをhtmlに変換
+  const texText = parts.slice(1).join("").trim();
+  const htmlTex = texToHtml(texText);
+  const htmlTexforDesign = `<span class="tex">${htmlTex}</span>` // fix: tex class のデザインをあてたいけどあたらない
+
+  // texを使っているかで条件分岐
+  if (typeof htmlTex === 'undefined') {
+    return htmlText
+  } else {
+    return htmlText + htmlTexforDesign
+  }
+}
+)
+
+// texをHtmlに変換する関数
+const texToHtml = (texText) => {
+  if (texText) {
+    try {
+      return katex.renderToString(texText, {
+        throwOnError: false,
+        displayMode: true,
+      });
+    } catch (err) {
+      return '<p>数式のレンダリングに失敗しました。</p>';
+    }
+  }
+};
+
+// chatContentのupdate
+const update = debounce((e) => {
+  chatContent.value = e.target.value
+}, 100) // 100msec間隔 より頻繁に実行しない
+
+//Shift Enterの改行を実行するメソッド
+const KeyEnterShift = () => {
+  return 
+}
+
+
+// 投稿メッセージをサーバに送信する
 const onPublish = () => {
-  const message = `${userName.value}さん: ${chatContent.value}`
+  // 投稿メッセージをサーバに送信
+  const message = `${userName.value}さん: ${previewHtml.value}`
   socket.emit("publishEvent", message)
   // 入力欄を初期化
   chatContent.value = ""
@@ -40,8 +98,8 @@ const onExit = () => {
 
 // メモを取る
 const onMemo = () => {
-  const message = `${userName.value}さんのメモ: ${chatContent.value}`
-  processMessage(message)
+  const memoMessage = `${userName.value}さんのメモ: ${previewHtml.value}`
+  chatList.unshift(memoMessage);
   // 入力欄を初期化
   chatContent.value = ""
 }
@@ -50,51 +108,19 @@ const onMemo = () => {
 // #region socket event handler
 const onReceiveEnter = (data) => {
   const loginMessage = `${data}さんが入室しました`
-  chatList.unshift({
-    text: loginMessage,
-    isTex: false
-  })
+  chatList.unshift(loginMessage)
 }
 
 const onReceiveExit = (data) => {
-  chatList.unshift({
-    text: data,
-    isTex: false
-  })
+  chatList.unshift(data)
 }
 
 const onReceivePublish = (data) => {
-  processMessage(data);
+  chatList.unshift(data);
   
 }
 // #endregion
 
-// メッセージを処理するヘルパー関数
-const processMessage = (message) => {
-  const parts = message.split('tex:');
-  const normalText = parts[0].trim();
-  const texText = parts.slice(1).join('tex:').trim();
-
-
-  // 分割後の各部分をログに表示
-  console.log("Message parts:", parts);
-  
-  if (texText) {
-    chatList.unshift({
-      text: texText,
-      isTex: true
-    });
-    console.log("Normal text:", normalText);
-  }
-
-  if (normalText) {
-    chatList.unshift({
-      text: normalText,
-      isTex: false
-    });
-    console.log("LaTeX text:", texText);
-  }
-}
 
 // #region local methods
 const registerSocketEvent = () => {
@@ -110,17 +136,6 @@ const registerSocketEvent = () => {
     onReceivePublish(data)
   })
 }
-
-// メッセージがメモかどうかを判定する
-const isMemo = (chat) => {
-  return chat.isMemo
-}
-
-//Shift Enterの改行を実行するメソッド
-const KeyEnterShift = () => {
-  return 
-}
-
 // #endregion
 </script>
 
@@ -129,20 +144,26 @@ const KeyEnterShift = () => {
     <h1 class="text-h3 font-weight-medium">Vue.js Chat チャットルーム</h1>
     <div class="mt-10">
       <p>ログインユーザ：{{ userName }}さん</p>
-      <textarea v-model="chatContent" @keydown.enter.exact="onPublish" @keydown.enter.shift.exact="KeyEnterShift" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
+      <textarea v-model="chatContent" @input="update" @keydown.enter.exact="onPublish" @keydown.enter.shift.exact="KeyEnterShift" variant="outlined" placeholder="投稿文を入力してください" rows="4" class="area"></textarea>
       <div class="mt-5">
         <button class="button-normal" @click="onPublish">投稿</button>
         <button class="button-normal util-ml-8px" @click="onMemo">メモ</button>
       </div>
+
+      <!-- Preview Area -->
+      <div class="preview mt-5">
+        <h3>Preview</h3>
+        <div v-html="previewHtml"></div>
+      </div>
+
+      <!-- Chat content Area -->
       <div class="mt-5" v-if="chatList.length !== 0">
         <ul>
           <li class="item mt-4" v-for="(chat, i) in chatList" :key="i" :class="{ 
-            publish: chat.text.startsWith(userName + 'さん:'), 
-            memo: chat.text.startsWith(userName + 'さんのメモ:'), 
-            tex: chat.isTex
+            publish: chat.startsWith(userName + 'さん:'), 
+            memo: chat.startsWith(userName + 'さんのメモ:'), 
           }">
-            <span v-if="!chat.isTex">{{ chat.text }}</span>
-            <TexRenderer v-if="chat.isTex" :formula="chat.text" :key="chat.text" />
+            <div v-html="chat" class="content"></div>
           </li>
         </ul>
       </div>
@@ -154,8 +175,24 @@ const KeyEnterShift = () => {
 </template>
 
 <style scoped>
+
+/* Preview-Style */
+.preview {
+  background-color: #f0f0f0;
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.tex {
+  color: green !important;
+  background-color: #f8f9fa !important;
+  padding: 5px !important;
+  border-left: 4px solid #ced4da !important;
+  margin-top: 10px !important;
+}
+
 .publish {
-  color: red !important;
+  color: red;
   font-style: italic !important;
 }
 
@@ -164,14 +201,9 @@ const KeyEnterShift = () => {
   /* 青色のテキスト */
 }
 
-.tex {
-  color: green; /* 緑色のテキスト */
-  background-color: #f8f9fa !important;
-  padding: 5px !important;
-  border-left: 4px solid #ced4da !important;
-  margin-top: 10px !important;
+.content {
+  padding-left: 20px !important;
 }
-
 .link {
   text-decoration: none;
 }
