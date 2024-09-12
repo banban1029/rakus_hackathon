@@ -45,7 +45,7 @@ const previewHtml = computed(() => {
   // texをhtmlに変換
   const texText = parts.slice(1).join("").trim();
   const htmlTex = texToHtml(texText);
-  const htmlTexforDesign = `<span class="tex">${htmlTex}</span>` // fix: tex class のデザインをあてたいけどあたらない
+  const htmlTexforDesign = `<div class="tex">${htmlTex}</div>` // fix: tex class のデザインをあてたいけどあたらない
 
   // texを使っているかで条件分岐
   if (typeof htmlTex === 'undefined') {
@@ -174,7 +174,7 @@ const registerSocketEvent = () => {
   </div>
 </template>
 
-<style scoped>
+<style>
 
 /* Preview-Style */
 .preview {
@@ -193,7 +193,7 @@ const registerSocketEvent = () => {
 
 .publish {
   color: red;
-  font-style: italic !important;
+  font-style: italic;
 }
 
 .memo {
@@ -223,7 +223,7 @@ const registerSocketEvent = () => {
 }
 
 .button-exit {
-  color: #000;
+  color: #000 !important;
   margin-top: 8px;
 }
 </style>
